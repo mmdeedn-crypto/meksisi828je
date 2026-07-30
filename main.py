@@ -181,41 +181,78 @@ def format_number(n):
 # ============================================================
 #   القسم 5: تجهيز شكل الرسالة اللي بتنبعث لتيليجرام
 # ============================================================
+ARABIC_WEEKDAYS = {
+    0: "الاثنين", 1: "الثلاثاء", 2: "الأربعاء", 3: "الخميس",
+    4: "الجمعة", 5: "السبت", 6: "الأحد",
+}
+
+DIVIDER = "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
+
+
+def growth_line(current, previous_value, label):
+    """يبني سطر نمو بشكل موحّد (▲ زيادة / ▼ نقصان / ● ثبات)"""
+    diff = current - previous_value
+    if diff > 0:
+        arrow, sign = "▲", "+"
+    elif diff < 0:
+        arrow, sign = "▼", ""
+    else:
+        arrow, sign = "●", ""
+    return f"   {arrow} {label}: {sign}{format_number(diff)} عن أمس\n"
+
+
 def build_message(stats, previous):
-    today = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    weekday = ARABIC_WEEKDAYS[now.weekday()]
 
-    subs_growth_line = ""
-    if previous:
-        diff = stats["subscribers"] - previous.get("subscribers", stats["subscribers"])
-        sign = "+" if diff >= 0 else ""
-        subs_growth_line = f"   └ نمو اليوم: {sign}{format_number(diff)}\n"
-
-    views_growth_line = ""
-    if previous:
-        diff_views = stats["views"] - previous.get("views", stats["views"])
-        sign = "+" if diff_views >= 0 else ""
-        views_growth_line = f"   └ نمو اليوم: {sign}{format_number(diff_views)}\n"
-
-    msg = (
-        f"📊 *تقرير قناة {stats['title']}*\n"
-        f"📅 {today}\n\n"
-        f"👥 *المشتركين:* {format_number(stats['subscribers'])}\n"
-        f"{subs_growth_line}"
-        f"👁 *إجمالي المشاهدات:* {format_number(stats['views'])}\n"
-        f"{views_growth_line}"
-        f"🎬 *عدد الفيديوهات:* {format_number(stats['video_count'])}\n"
+    avg_views_per_video = (
+        stats["views"] // stats["video_count"] if stats["video_count"] else 0
     )
 
+    # ---------- الترويسة ----------
+    msg = (
+        f"✨ *تقرير {stats['title']}* ✨\n"
+        f"🗓 {weekday} • {today}\n"
+        f"{DIVIDER}\n\n"
+    )
+
+    # ---------- المؤشرات الرئيسية ----------
+    msg += "📈 *النظرة العامة*\n\n"
+
+    msg += f"👥 المشتركين: *{format_number(stats['subscribers'])}*\n"
+    if previous and "subscribers" in previous:
+        msg += growth_line(stats["subscribers"], previous["subscribers"], "التغيّر")
+
+    msg += f"\n👁 إجمالي المشاهدات: *{format_number(stats['views'])}*\n"
+    if previous and "views" in previous:
+        msg += growth_line(stats["views"], previous["views"], "التغيّر")
+
+    msg += f"\n🎬 عدد الفيديوهات: *{format_number(stats['video_count'])}*\n"
+    if previous and "video_count" in previous:
+        msg += growth_line(stats["video_count"], previous["video_count"], "فيديو جديد")
+
+    msg += f"\n📊 متوسط المشاهدات لكل فيديو: *{format_number(avg_views_per_video)}*\n"
+
+    # ---------- آخر فيديو ----------
     if stats.get("last_video"):
         v = stats["last_video"]
-        msg += (
-            f"\n🆕 *آخر فيديو:*\n"
-            f"«{v['title']}»\n"
-            f"   👁 {format_number(v['views'])}  "
-            f"👍 {format_number(v['likes'])}  "
-            f"💬 {format_number(v['comments'])}\n"
-            f"   🔗 https://youtu.be/{v['video_id']}\n"
+        engagement = (
+            round((v["likes"] / v["views"]) * 100, 1) if v["views"] else 0
         )
+        msg += (
+            f"\n{DIVIDER}\n\n"
+            f"🆕 *آخر فيديو منشور*\n\n"
+            f"「{v['title']}」\n\n"
+            f"   👁 {format_number(v['views'])} مشاهدة\n"
+            f"   👍 {format_number(v['likes'])} إعجاب\n"
+            f"   💬 {format_number(v['comments'])} تعليق\n"
+            f"   💯 نسبة التفاعل: {engagement}%\n\n"
+            f"🔗 https://youtu.be/{v['video_id']}\n"
+        )
+
+    # ---------- تذييل ----------
+    msg += f"\n{DIVIDER}\n🤖 تقرير يومي تلقائي"
 
     return msg
 
