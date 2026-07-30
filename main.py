@@ -210,9 +210,9 @@ def build_message(stats, previous):
         stats["views"] // stats["video_count"] if stats["video_count"] else 0
     )
 
-    # ---------- الترويسة ----------
+    # ---------- الترويسة (اسم القناة يجي تلقائي من يوتيوب) ----------
     msg = (
-        f"✨ *تقرير {stats['title']}* ✨\n"
+        f"🔥 *تقرير {stats['title']}* 🔥\n"
         f"🗓 {weekday} • {today}\n"
         f"{DIVIDER}\n\n"
     )
@@ -234,11 +234,21 @@ def build_message(stats, previous):
 
     msg += f"\n📊 متوسط المشاهدات لكل فيديو: *{format_number(avg_views_per_video)}*\n"
 
+    # نسبة نمو المشتركين كمؤشر مئوي (لو عندنا أمس)
+    if previous and "subscribers" in previous and previous["subscribers"]:
+        pct = round(
+            ((stats["subscribers"] - previous["subscribers"]) / previous["subscribers"]) * 100, 3
+        )
+        msg += f"📐 نسبة نمو المشتركين: *{pct}%*\n"
+
     # ---------- آخر فيديو ----------
     if stats.get("last_video"):
         v = stats["last_video"]
         engagement = (
             round((v["likes"] / v["views"]) * 100, 1) if v["views"] else 0
+        )
+        comment_rate = (
+            round((v["comments"] / v["views"]) * 100, 2) if v["views"] else 0
         )
         msg += (
             f"\n{DIVIDER}\n\n"
@@ -247,7 +257,8 @@ def build_message(stats, previous):
             f"   👁 {format_number(v['views'])} مشاهدة\n"
             f"   👍 {format_number(v['likes'])} إعجاب\n"
             f"   💬 {format_number(v['comments'])} تعليق\n"
-            f"   💯 نسبة التفاعل: {engagement}%\n\n"
+            f"   💯 نسبة التفاعل (إعجاب/مشاهدة): {engagement}%\n"
+            f"   📝 نسبة التعليقات: {comment_rate}%\n\n"
             f"🔗 https://youtu.be/{v['video_id']}\n"
         )
 
